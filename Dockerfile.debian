@@ -307,68 +307,6 @@ RUN \
     && \
     echo
 
-# TODO: Deprecate neko
-# Install Neko server
-COPY --from=m1k1o/neko:base /usr/bin/neko /usr/bin/neko
-COPY --from=m1k1o/neko:base /var/www /var/www
-
-# Install Web Frontend
-ARG FRONTEND_VERSION=a8eb92f
-RUN \
-    echo "**** Fetch Web Frontend ****" \
-        && mkdir -p /opt \
-        && cd /opt \
-        && rm -rf /opt/frontend \
-        && git clone https://github.com/Steam-Headless/frontend.git --branch master /opt/frontend \
-        && cd /opt/frontend \
-        && git checkout ${FRONTEND_VERSION} 2> /dev/null \
-        && git submodule init \
-        && git submodule update --depth 1 --recursive \
-        && rm -rf /opt/frontend/.git \
-    && \
-    echo "**** Configure Web Frontend ****" \
-        && echo '<!DOCTYPE html>' > /opt/frontend/index.html \
-        && echo '<html><head><meta http-equiv="refresh" content="0;url=./web/"></head><body><p>If you are not redirected, <a href="./web/">click here</a>.</p></body></html>' >> /opt/frontend/index.html \
-        && chmod -R 755 /opt/frontend \
-        && convert /opt/frontend/web/images/icons/novnc-ios-180.png -resize "128x128" /tmp/steam-headless.png \
-        && xdg-icon-resource install --novendor --size 128 /tmp/steam-headless.png \
-    && \
-    echo "**** Section cleanup ****" \
-        && rm -f /tmp/steam-headless.png
-
-# Install Websockify
-ARG WEBSOCKETIFY_VERSION=0.11.0
-RUN \
-    echo "**** Update apt database ****" \
-        && apt-get update \
-    && \
-    echo "**** Install Websockify dependencies ****" \
-        && apt-get install -y \
-            python3-numpy \
-            python3-requests \
-            python3-jwcrypto \
-            python3-redis \
-    && \
-    echo "**** Fetch Websockify ****" \
-        && cd /tmp \
-        && wget -O /tmp/websockify.tar.gz https://github.com/novnc/websockify/archive/v${WEBSOCKETIFY_VERSION}.tar.gz \
-    && \
-    echo "**** Extract Websockify ****" \
-        && cd /tmp \
-        && tar -xvf /tmp/websockify.tar.gz \
-    && \
-    echo "**** Install Websockify to Web Frontend path ****" \
-        && cd /tmp \
-        && mv -v /tmp/websockify-${WEBSOCKETIFY_VERSION} /opt/frontend/utils/websockify \
-    && \
-    echo "**** Section cleanup ****" \
-        && apt-get clean autoclean -y \
-        && apt-get autoremove -y \
-        && rm -rf \
-            /var/lib/apt/lists/* \
-            /tmp/websockify-* \
-            /tmp/websockify.tar.gz
-
 # Setup audio streaming deps
 RUN \
     echo "**** Update apt database ****" \
@@ -430,6 +368,31 @@ RUN \
     && \
     echo
 
+# Install gstreamer/livekit deps
+RUN apt-get update && apt-get install -y \
+    golang \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    libnice10 \
+    gstreamer1.0-nice \
+    build-essential \
+    curl \
+    git \
+    libssl-dev \
+    pkg-config
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 
+
+RUN git clone https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs.git
+
+WORKDIR /gst-plugins-rs
+
+RUN /root/.cargo/bin/cargo install cargo-c
+RUN /root/.cargo/bin/cargo cbuild -p gst-plugin-webrtc
+RUN /root/.cargo/bin/cargo cbuild -p gst-plugin-rtp
+
+
 # Install tools for monitoring hardware
 RUN \
     echo "**** Update apt database ****" \
@@ -441,30 +404,6 @@ RUN \
             htop \
             vainfo \
             vdpauinfo \
-    && \
-    echo "**** Section cleanup ****" \
-        && apt-get clean autoclean -y \
-        && apt-get autoremove -y \
-        && rm -rf \
-            /var/lib/apt/lists/* \
-            /var/tmp/* \
-            /tmp/* \
-    && \
-    echo
-
-# Install Sunshine
-COPY --from=lizardbyte/sunshine:1303def-debian-bookworm /sunshine.deb /usr/src/sunshine.deb
-RUN \
-    echo "**** Update apt database ****" \
-        && apt-get update \
-    && \
-    echo "**** Install Sunshine requirements ****" \
-        && apt-get install -y \
-            va-driver-all \
-    && \
-    echo "**** Install Sunshine ****" \
-        && apt-get install -y \
-            /usr/src/sunshine.deb \
     && \
     echo "**** Section cleanup ****" \
         && apt-get clean autoclean -y \
@@ -537,21 +476,10 @@ ENV \
     MODE="primary" \
     WEB_UI_MODE="vnc" \
     ENABLE_VNC_AUDIO="true" \
-    NEKO_PASSWORD=neko \
-    NEKO_PASSWORD_ADMIN=admin \
     ENABLE_STEAM="true" \
     STEAM_ARGS="-silent" \
-    ENABLE_SUNSHINE="true" \
     ENABLE_EVDEV_INPUTS="true" \
     ENABLE_WOL_POWER_MANAGER="false"
-
-# Configure required ports
-ENV \
-    PORT_NOVNC_WEB="8083" \
-    NEKO_NAT1TO1=""
-
-# Expose the required ports
-EXPOSE 8083
 
 # Set entrypoint
 RUN chmod +x /entrypoint.sh

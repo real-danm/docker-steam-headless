@@ -13,22 +13,31 @@ spec:
       labels:
         app: steam-headless
     spec:
+      nodeSelector:
+        livekit.io/node-pool: cloud-media
+      tolerations:
+      - key: "livekit.io/node-pool"
+        operator: "Equal"
+        value: "cloud-media"
+        effect: "NoSchedule"
       hostNetwork: true
       securityContext:
         fsGroup: 1000
+      imagePullSecrets:
+        - name: dockerhub
       containers:
       - name: steam-headless
         securityContext:
           privileged: true
-        image: josh5/steam-headless:latest
+        image: livekit/steam-test:latest
         resources: #Change CPU and Memory below
           requests:
-            memory: "24G"
-            cpu: "6"
+            memory: "12Gi"
+            cpu: "7000m"
           limits:
-            memory: "24G"
-            cpu: "6"
-            nvidia.com/gpu: 1 #If you're using a nvidia GPU, add it here
+            memory: "12Gi"
+            cpu: "7000m"
+            # nvidia.com/gpu: 1 #If you're using a nvidia GPU, add it here
         volumeMounts:
         - name: home-dir
           mountPath: /home/default/

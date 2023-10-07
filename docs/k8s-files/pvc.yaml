@@ -3,11 +3,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: games
 spec:
-  storageClassName: ssd #Adjust your storageclass as needed
+  # storageClassName: ssd #Adjust your storageclass as needed
   volumeMode: Filesystem
   resources:
     requests:
-      storage: 400Gi
+      storage: 200Gi
   accessModes:
     - ReadWriteOnce
 ---
@@ -17,9 +17,9 @@ metadata:
   name: home        
 spec:
   volumeMode: Filesystem
-  storageClassName: nvme-replicated #Adjust your storageclass as needed
+  # storageClassName: nvme-replicated #Adjust your storageclass as needed
   resources:
     requests:
-      storage: 50Gi
+      storage: 100Gi
   accessModes:
     - ReadWriteOnce
