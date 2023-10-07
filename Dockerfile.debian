@@ -478,8 +478,16 @@ ENV \
     ENABLE_VNC_AUDIO="true" \
     ENABLE_STEAM="true" \
     STEAM_ARGS="-silent" \
+    ENABLE_SUNSHINE="true" \
     ENABLE_EVDEV_INPUTS="true" \
     ENABLE_WOL_POWER_MANAGER="false"
+
+# Configure required ports
+ENV \
+    PORT_NOVNC_WEB="8083"
+
+# Expose the required ports
+EXPOSE 8083
 
 # Set entrypoint
 RUN chmod +x /entrypoint.sh
